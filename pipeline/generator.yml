@@ -1,0 +1,53 @@
+input:
+  generate:
+    batch_size: 100000
+    count: 100000
+    mapping: |
+      root = { 
+        "sourceid": random_int(seed: 1, min: 1, max: 10),
+        "timestamp": random_int(timestamp_unix_nano()),
+        "subs": random_int(seed: 1),
+        "dialed": random_int(seed: 1, min: 1000000000, max: 9999999999),
+        "call_date": now(),
+        "srls": random_int(seed: 1, min: 1, max: 32000),
+        "msisdn": random_int(seed: 1, min: 1000000000, max: 9999999999),
+        "msi": uuid_v4(),
+        "imei": uuid_v4(),
+        "volume": random_int(seed: 1, min: 0, max: 1000),
+        "price": random_int(seed: 1, min: 0, max: 100)*0.01,
+        "balance": random_int(seed: 1, min: 0, max: 100)*0.01,
+        "a_area": random_int(seed: 1, min: 10000, max: 65000),
+        "a_cell": random_int(seed: 1, min: 10000, max: 999999),
+        "lcal": random_int(seed: 1, min: 1, max: 100),
+        "rtpl": random_int(seed: 1, min: 1, max: 100),
+        "pset":random_int(seed: 1, min: 1, max: 100),
+        "drct": random_int(seed: 1, min: 1, max: 100),
+        "tariff_class": random_int(seed: 1, min: 1, max:100),
+        "rmop": random_int(seed: 1, min: 1, max: 100),
+        "session_id": uuid_v4(),
+        "clnt": random_int(seed: 1),
+        "charge_report_srls": random_int(seed: 1, min: 0, max: 1),
+        "called_rn": random_int(seed: 1, min: 0, max: 1),
+        "forwarded_rn": random_int(seed: 1, min: 0, max: 1),
+        "event_time": now(),
+        "traced": 0,
+        "service_content_type": 0,
+        "raw_record": uuid_v4(),
+        "pclt_id": random_int(seed: 1, min: 1, max: 100),
+        "rec_type": random_int(seed: 1, min: 1, max: 100),
+        "duration": random_int(seed: 1, min: 1, max: 1000),
+        "rate_serv_volume": random_int(seed: 1, min: 1, max: 1000),
+        "a_forward": random_int(seed: 1, min: 1000000000, max: 9999999999),
+        "utc_offset": random_int(seed: 1, min: 0, max: 23)
+      }
+
+output:
+  amqp_0_9:
+    urls: [ amqp://test:test@rmq:5672 ]
+    exchange: ""
+    key: test
+    content_type: application/octet-stream
+    content_encoding: ""
+    persistent: false
+    max_in_flight: 64
+
