@@ -1,0 +1,42 @@
+input:
+  amqp_0_9:
+    urls: [ amqp://test:test@rmq:5672 ]
+    #bindings_declare:
+    #  - exchange: ""
+    #    key: test
+    queue: test
+    auto_ack: false
+    prefetch_count: 10000
+    # prefetch_size: 1024000
+
+pipeline:
+  processors:
+    - bloblang: |
+        root = this
+        root.raw_record = deleted()
+
+
+output:
+  kafka:
+    addresses:
+      - kafka:9092
+    topic: test
+    client_id: rmq2kafka
+    compression: snappy
+    ack_replicas: false
+    partitioner: fnv1a_hash
+    #partition: ""
+    max_in_flight: 2
+    max_msg_bytes: 1024000
+    timeout: 5s
+    retry_as_batch: false
+    batching:
+      count: 1000
+      byte_size: 1024000
+      period: "1s"
+    max_retries: 0 
+    backoff:
+      initial_interval: 3s
+      max_interval: 10s
+      max_elapsed_time: 30s
+

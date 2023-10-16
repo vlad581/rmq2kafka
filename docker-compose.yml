@@ -1,0 +1,113 @@
+version: "3.0"
+services:
+  rmq:
+    image: rabbitmq:3.12-management-alpine
+    hostname: rmq
+    expose:
+      - 5672
+      - 15672
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: "test"
+      RABBITMQ_DEFAULT_PASS: "test"
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit disk_free_limit 1073741820 -rabbit total_memory_available_override_value 1073741820"
+    healthcheck:
+      test: rabbitmq-diagnostics check_port_connectivity
+      interval: 3s
+      timeout: 3s
+      retries: 30    
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1g
+        reservations:
+          cpus: '2.0'
+          memory: 1g
+  
+  rmq-init:
+    image: rabbitmq:3.12-management-alpine
+    command: "/bin/sh -c 'rabbitmqadmin --host rmq -u test -p test declare queue name=test durable=false'"  
+    depends_on:
+      rmq:
+        condition: service_healthy
+
+  kafka:
+    image: 'bitnami/kafka:3.2'
+    ports:
+      - '9092:9092'
+    environment:
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER 
+     # - KAFKA_CFG_ZOOKEEPER_CONNECT=zoo1:2181
+     # - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
+     # - ALLOW_PLAINTEXT_LISTENER=yes
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1g 
+        reservations:
+          cpus: '1.0'
+          memory: 1g
+
+  kafka-init:
+    image: 'bitnami/kafka:3.2'
+    command: "sh -c '/opt/bitnami/kafka/bin/kafka-topics.sh --create --topic test --partitions 2 --replication-factor 1 --if-not-exists --bootstrap-server 
+kafka:9092'"
+    depends_on:
+      - kafka
+
+  kafkaui:
+    image: provectuslabs/kafka-ui
+    restart: "no"
+    ports:
+      - "8080:8080"
+    environment:
+      DYNAMIC_CONFIG_ENABLED: True
+      KAFKA_CLUSTERS_0_NAME: kafka
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: 'kafka:9092' 
+    depends_on:
+      - kafka
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512m 
+        reservations:
+          cpus: '1.0'
+          memory: 512m
+
+  rmq2kafka:
+    image: jeffail/benthos
+    expose:
+      - 4195
+    ports:
+      - "4195:4195"
+    volumes:
+      - type: bind
+        source: ./pipeline/rmq2kafka.yml
+        target: /benthos.yaml
+        read_only: true
+    depends_on:
+      - rmq
+      - kafka
+    deploy:
+      resources:
+        limits:
+          cpus: '3.0'
+          memory: 512m 
+        reservations:
+          cpus: '1.0'
+          memory: 512m
+  
+  generator: 
+    image: jeffail/benthos
+    volumes:
+      - ./pipeline:/pipeline
